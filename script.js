@@ -19,7 +19,7 @@ const resultTitle = $('result-title');
 const csvBase = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=`;
 
 const DATE_COLUMNS = new Set(['INV Date', 'T&C Date', 'Ex-factory', 'Expiry date']);
-const HIDDEN_FILTERS = new Set(['total quantity','Ex-factory','Remark']);
+const HIDDEN_FILTERS = new Set(['total quantity','ex-factory','remark']);
 const DROPDOWN_COLUMNS = new Set(['model type']);
 
 function clean(value) { return String(value ?? '').replace(/\uFEFF/g, '').trim(); }
