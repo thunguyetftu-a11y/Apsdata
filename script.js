@@ -19,8 +19,8 @@ const resultTitle = $('result-title');
 const csvBase = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=`;
 
 const DATE_COLUMNS = new Set(['INV Date', 'T&C Date', 'Ex-factory', 'Expiry date']);
-const HIDDEN_FILTERS = new Set(['total quantity']);
-const DROPDOWN_COLUMNS = new Set(['model type', 'model type 2']);
+const HIDDEN_FILTERS = new Set(['total quantity','Ex-factory','Remark']);
+const DROPDOWN_COLUMNS = new Set(['model type']);
 
 function clean(value) { return String(value ?? '').replace(/\uFEFF/g, '').trim(); }
 function normalize(value) { return clean(value).toLowerCase(); }
@@ -138,7 +138,7 @@ function renderFilters() {
       inputs.appendChild(search);
       if (isDropdownColumn(column)) inputs.appendChild(makeOptions(column));
     }
-    if (['model type', 'model type 2'].includes(normalize(column))) {
+    if (['model type'].includes(normalize(column))) {
       const note = document.createElement('small'); note.className = 'field-note';
       note.textContent = 'Options update automatically when new values are added to the Google Sheet.';
       inputs.appendChild(note);
