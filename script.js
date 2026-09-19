@@ -105,7 +105,7 @@ function makeOptions(column) {
   const details = document.createElement('details');
   details.className = 'value-dropdown';
   const summary = document.createElement('summary');
-  summary.textContent = 'Choose one or more values';
+  summary.textContent = 'Select';
   details.appendChild(summary);
   const options = document.createElement('div');
   options.className = 'field-options';
