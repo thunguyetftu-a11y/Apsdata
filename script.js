@@ -1,6 +1,7 @@
 const SHEET_ID = '1uS-22GKtiiWrawzIUwsqrW6wOODuYDWwo3bbD_TFK48';
 const MAIN_GID = '0';
 const SETTINGS_GID = '1384681035';
+const AUTH_SESSION_KEY = 'aps-data-library-authenticated';
 
 const state = { columns: [], rows: [], passcode: null };
 const $ = (id) => document.getElementById(id);
@@ -48,7 +49,7 @@ function readPasscode(rows) {
 
 async function loadData() {
   try {
-    resultsStatus.textContent = 'Loading data from Google Sheet...';
+    resultsStatus.textContent = 'Loading live data from Google Sheet...';
     const [settingsText, mainText] = await Promise.all([
       fetchCsv(SETTINGS_GID),
       fetchCsv(MAIN_GID),
@@ -65,7 +66,13 @@ async function loadData() {
     ));
     renderFilters();
     resultTitle.textContent = `${state.rows.length} records loaded`;
-    resultsStatus.textContent = 'Ready for keyword and date search.';
+    resultsStatus.textContent = 'Live data loaded. Ready for keyword and date search.';
+
+    // Keep access after a normal browser refresh during the current tab session.
+    // The passcode is still required again after Log out or closing the tab.
+    if (sessionStorage.getItem(AUTH_SESSION_KEY) === 'true') {
+      showApp();
+    }
   } catch (error) {
     console.error(error);
     resultTitle.textContent = 'Data unavailable';
@@ -160,7 +167,7 @@ function renderFilters() {
       if (isDropdownColumn(column)) inputs.appendChild(makeOptions(column));
     }
 
-    if (normalize(column) === 'model type' || normalize(column) === 'model type 2') {
+    if (['model type', 'model type 2'].includes(normalize(column))) {
       const note = document.createElement('small');
       note.className = 'field-note';
       note.textContent = 'Options update automatically when new values are added to the Google Sheet.';
@@ -197,12 +204,7 @@ function getCriteria() {
       .find((input) => input.dataset.dateStart === column);
     const to = [...document.querySelectorAll('[data-date-end]')]
       .find((input) => input.dataset.dateEnd === column);
-    return [column, {
-      text: keywords(search?.value),
-      selected,
-      from: from?.value || '',
-      to: to?.value || '',
-    }];
+    return [column, { text: keywords(search?.value), selected, from: from?.value || '', to: to?.value || '' }];
   }));
 }
 
@@ -281,6 +283,18 @@ function reset() {
   resultsStatus.textContent = 'Filters reset.';
 }
 
+function showApp() {
+  loginScreen.classList.remove('active');
+  appScreen.classList.add('active');
+}
+
+function showLogin() {
+  appScreen.classList.remove('active');
+  loginScreen.classList.add('active');
+  passcodeInput.value = '';
+  passcodeInput.focus();
+}
+
 loginForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const entered = clean(passcodeInput.value);
@@ -292,17 +306,16 @@ loginForm.addEventListener('submit', (event) => {
     loginMessage.textContent = 'The passcode is incorrect. Please try again.';
     return;
   }
+  sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
   loginMessage.textContent = '';
-  loginScreen.classList.remove('active');
-  appScreen.classList.add('active');
+  showApp();
 });
 
 $('search-btn').addEventListener('click', search);
 $('reset-search-btn').addEventListener('click', reset);
 $('logout-btn').addEventListener('click', () => {
-  appScreen.classList.remove('active');
-  loginScreen.classList.add('active');
-  passcodeInput.value = '';
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
+  showLogin();
 });
 passcodeInput.addEventListener('input', (event) => {
   event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6);
