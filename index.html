@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=12" />
+    <link rel="stylesheet" href="styles.css?v=13" />
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   </head>
   <body>
@@ -45,6 +45,57 @@
         </section>
       </main>
     </div>
-    <script src="script.js?v=12"></script>
+
+    <div id="detail-modal" class="detail-modal" hidden aria-hidden="true">
+      <div class="detail-backdrop" data-close-details></div>
+      <section class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+        <div class="detail-header"><h3 id="detail-title">Record details</h3><button class="ghost-btn small" type="button" data-close-details aria-label="Close details">Close</button></div>
+        <div id="detail-content" class="detail-content"></div>
+      </section>
+    </div>
+
+    <script src="script.js?v=13"></script>
+    <script>
+      (() => {
+        const body = document.getElementById('results-body');
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-content');
+        const title = document.getElementById('detail-title');
+        const close = () => { modal.hidden = true; modal.setAttribute('aria-hidden', 'true'); };
+        const open = (row) => {
+          content.replaceChildren();
+          Object.entries(row).forEach(([key, value]) => {
+            const item = document.createElement('div'); item.className = 'detail-item';
+            const label = document.createElement('dt'); label.textContent = key;
+            const data = document.createElement('dd'); data.textContent = value || '—';
+            item.append(label, data); content.appendChild(item);
+          });
+          title.textContent = 'Record details';
+          modal.hidden = false; modal.setAttribute('aria-hidden', 'false');
+        };
+        body.addEventListener('click', (event) => {
+          const row = event.target.closest('tr');
+          if (!row || !row.dataset.record) return;
+          open(JSON.parse(row.dataset.record));
+        });
+        modal.addEventListener('click', (event) => { if (event.target.matches('[data-close-details]')) close(); });
+        document.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+        const originalAppend = Node.prototype.appendChild;
+        const observeRows = new MutationObserver(() => {
+          body.querySelectorAll('tr').forEach((row) => {
+            if (row.dataset.record || row.querySelector('th')) return;
+            const cells = [...row.cells];
+            const headers = [...document.querySelectorAll('#results-head th')];
+            if (cells.length && headers.length === cells.length) {
+              row.dataset.record = JSON.stringify(Object.fromEntries(headers.map((header, index) => [header.textContent, cells[index].textContent])));
+              row.setAttribute('tabindex', '0');
+              row.setAttribute('aria-label', 'View record details');
+            }
+          });
+        });
+        observeRows.observe(body, { childList: true });
+        body.addEventListener('keydown', (event) => { if ((event.key === 'Enter' || event.key === ' ') && event.target.closest('tr')) { event.preventDefault(); event.target.closest('tr').click(); } });
+      })();
+    </script>
   </body>
 </html>
