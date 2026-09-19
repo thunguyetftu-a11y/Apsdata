@@ -16,8 +16,16 @@ const resultsStatus = $('results-status');
 const resultTitle = $('result-title');
 const csvBase = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=`;
 
+const DATE_COLUMNS = new Set(['INV Date', 'T&C Date', 'Ex-factory', 'Expiry date']);
+const HIDDEN_FILTERS = new Set(['total quantity']);
+const DROPDOWN_COLUMNS = new Set(['model type', 'model type 2']);
+
 function clean(value) {
   return String(value ?? '').replace(/\uFEFF/g, '').trim();
+}
+
+function normalize(value) {
+  return clean(value).toLowerCase();
 }
 
 async function fetchCsv(gid) {
@@ -29,7 +37,7 @@ async function fetchCsv(gid) {
 function readPasscode(rows) {
   for (const row of rows) {
     for (let i = 0; i < row.length - 1; i += 1) {
-      if (clean(row[i]).toLowerCase() === 'passcode') {
+      if (normalize(row[i]) === 'passcode') {
         const value = clean(row[i + 1]);
         if (value) return value;
       }
@@ -41,7 +49,10 @@ function readPasscode(rows) {
 async function loadData() {
   try {
     resultsStatus.textContent = 'Loading data from Google Sheet...';
-    const [settingsText, mainText] = await Promise.all([fetchCsv(SETTINGS_GID), fetchCsv(MAIN_GID)]);
+    const [settingsText, mainText] = await Promise.all([
+      fetchCsv(SETTINGS_GID),
+      fetchCsv(MAIN_GID),
+    ]);
     const settings = Papa.parse(settingsText, { skipEmptyLines: true }).data;
     const parsedMain = Papa.parse(mainText, { skipEmptyLines: true }).data;
     state.passcode = readPasscode(settings);
@@ -64,59 +75,106 @@ async function loadData() {
 }
 
 function valuesFor(column) {
-  return [...new Set(state.rows.map((row) => clean(row[column])).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  return [...new Set(state.rows.map((row) => clean(row[column])).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function isDateColumn(column) {
-  return /date|time|created|updated/i.test(column);
+  return DATE_COLUMNS.has(column) || /date|time|created|updated/i.test(column);
+}
+
+function isHiddenFilter(column) {
+  return HIDDEN_FILTERS.has(normalize(column));
+}
+
+function isDropdownColumn(column) {
+  return DROPDOWN_COLUMNS.has(normalize(column)) || !isDateColumn(column);
+}
+
+function makeOptions(column) {
+  const details = document.createElement('details');
+  details.className = 'value-dropdown';
+
+  const summary = document.createElement('summary');
+  summary.textContent = 'Choose one or more values';
+  details.appendChild(summary);
+
+  const options = document.createElement('div');
+  options.className = 'field-options';
+
+  valuesFor(column).forEach((value) => {
+    const label = document.createElement('label');
+    label.className = 'option-item';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.column = column;
+    checkbox.value = value;
+    const text = document.createElement('span');
+    text.textContent = value;
+    label.append(checkbox, text);
+    options.appendChild(label);
+  });
+
+  details.appendChild(options);
+  return details;
 }
 
 function renderFilters() {
   filtersContainer.replaceChildren();
+
   state.columns.forEach((column) => {
+    if (isHiddenFilter(column)) return;
+
     const group = document.createElement('div');
     group.className = 'filter-group';
-    group.innerHTML = `<h4></h4><div class="filter-inputs"></div>`;
-    group.querySelector('h4').textContent = column;
-    const inputs = group.querySelector('.filter-inputs');
 
-    const search = document.createElement('input');
-    search.type = 'text';
-    search.placeholder = `Search ${column}`;
-    search.dataset.column = column;
-    inputs.appendChild(search);
+    const title = document.createElement('h4');
+    title.textContent = column;
+    group.appendChild(title);
 
-    const options = document.createElement('div');
-    options.className = 'field-options';
-    valuesFor(column).forEach((value) => {
-      const label = document.createElement('label');
-      label.className = 'option-item';
-      label.innerHTML = '<input type="checkbox"><span></span>';
-      const checkbox = label.querySelector('input');
-      checkbox.dataset.column = column;
-      checkbox.value = value;
-      label.querySelector('span').textContent = value;
-      options.appendChild(label);
-    });
-    if (options.childElementCount) inputs.appendChild(options);
+    const inputs = document.createElement('div');
+    inputs.className = 'filter-inputs';
 
     if (isDateColumn(column)) {
+      const range = document.createElement('div');
+      range.className = 'date-range';
       const from = document.createElement('input');
       from.type = 'date';
       from.dataset.dateStart = column;
-      from.setAttribute('aria-label', `${column} start date`);
+      from.setAttribute('aria-label', `${column} from date`);
+      from.title = 'From';
       const to = document.createElement('input');
       to.type = 'date';
       to.dataset.dateEnd = column;
-      to.setAttribute('aria-label', `${column} end date`);
-      inputs.append(from, to);
+      to.setAttribute('aria-label', `${column} to date`);
+      to.title = 'To';
+      range.append(from, to);
+      inputs.appendChild(range);
+    } else {
+      const search = document.createElement('input');
+      search.type = 'text';
+      search.placeholder = `Search ${column}`;
+      search.dataset.column = column;
+      inputs.appendChild(search);
+
+      if (isDropdownColumn(column)) inputs.appendChild(makeOptions(column));
     }
+
+    if (normalize(column) === 'model type' || normalize(column) === 'model type 2') {
+      const note = document.createElement('small');
+      note.className = 'field-note';
+      note.textContent = 'Options update automatically when new values are added to the Google Sheet.';
+      inputs.appendChild(note);
+    }
+
+    group.appendChild(inputs);
     filtersContainer.appendChild(group);
   });
 }
 
-function normalize(value) { return clean(value).toLowerCase(); }
-function keywords(value) { return clean(value).split(/[ ,;|\n]+/).map(normalize).filter(Boolean); }
+function keywords(value) {
+  return clean(value).split(/[ ,;|\n]+/).map(normalize).filter(Boolean);
+}
 
 function toDate(value) {
   const text = clean(value);
@@ -127,13 +185,24 @@ function toDate(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
-function criteria() {
+function getCriteria() {
   return Object.fromEntries(state.columns.map((column) => {
-    const search = [...document.querySelectorAll('[data-column]')].find((input) => input.type === 'text' && input.dataset.column === column);
-    const selected = [...document.querySelectorAll(`input[type="checkbox"][data-column="${CSS.escape(column)}"]`)].filter((input) => input.checked).map((input) => normalize(input.value));
-    const from = [...document.querySelectorAll('[data-date-start]')].find((input) => input.dataset.dateStart === column);
-    const to = [...document.querySelectorAll('[data-date-end]')].find((input) => input.dataset.dateEnd === column);
-    return [column, { text: keywords(search?.value), selected, from: from?.value || '', to: to?.value || '' }];
+    if (isHiddenFilter(column)) return [column, { text: [], selected: [], from: '', to: '' }];
+    const search = [...document.querySelectorAll('input[type="text"][data-column]')]
+      .find((input) => input.dataset.column === column);
+    const selected = [...document.querySelectorAll('input[type="checkbox"][data-column]')]
+      .filter((input) => input.dataset.column === column && input.checked)
+      .map((input) => normalize(input.value));
+    const from = [...document.querySelectorAll('[data-date-start]')]
+      .find((input) => input.dataset.dateStart === column);
+    const to = [...document.querySelectorAll('[data-date-end]')]
+      .find((input) => input.dataset.dateEnd === column);
+    return [column, {
+      text: keywords(search?.value),
+      selected,
+      from: from?.value || '',
+      to: to?.value || '',
+    }];
   }));
 }
 
@@ -151,6 +220,20 @@ function matches(row, filters) {
   });
 }
 
+function validateExtendYear() {
+  const column = state.columns.find((item) => normalize(item) === 'extend year');
+  if (!column) return true;
+  const input = [...document.querySelectorAll('input[type="text"][data-column]')]
+    .find((item) => item.dataset.column === column);
+  const value = clean(input?.value);
+  if (value && !/^\d+(\.\d+)?$/.test(value)) {
+    alert('Extend year must contain a decimal number only, for example 1 or 1.5.');
+    input.focus();
+    return false;
+  }
+  return true;
+}
+
 function renderResults(rows) {
   resultsHead.replaceChildren();
   resultsBody.replaceChildren();
@@ -163,24 +246,36 @@ function renderResults(rows) {
   resultTitle.textContent = `${rows.length} result${rows.length === 1 ? '' : 's'}`;
   resultsStatus.textContent = 'Results updated.';
   const header = document.createElement('tr');
-  state.columns.forEach((column) => { const th = document.createElement('th'); th.textContent = column; header.appendChild(th); });
+  state.columns.forEach((column) => {
+    const th = document.createElement('th');
+    th.textContent = column;
+    header.appendChild(th);
+  });
   resultsHead.appendChild(header);
   rows.forEach((row) => {
     const tr = document.createElement('tr');
-    state.columns.forEach((column) => { const td = document.createElement('td'); td.textContent = row[column] ?? ''; tr.appendChild(td); });
+    state.columns.forEach((column) => {
+      const td = document.createElement('td');
+      td.textContent = row[column] ?? '';
+      tr.appendChild(td);
+    });
     resultsBody.appendChild(tr);
   });
 }
 
 function search() {
+  if (!validateExtendYear()) return;
   resultsHead.replaceChildren();
   resultsBody.replaceChildren();
   resultsStatus.textContent = 'Searching...';
-  renderResults(state.rows.filter((row) => matches(row, criteria())));
+  renderResults(state.rows.filter((row) => matches(row, getCriteria())));
 }
 
 function reset() {
-  filtersContainer.querySelectorAll('input').forEach((input) => { input.checked = false; input.value = ''; });
+  filtersContainer.querySelectorAll('input').forEach((input) => {
+    input.checked = false;
+    input.value = '';
+  });
   resultsHead.replaceChildren();
   resultsBody.replaceChildren();
   resultsStatus.textContent = 'Filters reset.';
@@ -189,17 +284,29 @@ function reset() {
 loginForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const entered = clean(passcodeInput.value);
-  if (!state.passcode) { loginMessage.textContent = 'Passcode is unavailable. Check Google Sheet sharing.'; return; }
-  if (entered !== state.passcode) { loginMessage.textContent = 'The passcode is incorrect. Please try again.'; return; }
+  if (!state.passcode) {
+    loginMessage.textContent = 'Passcode is unavailable. Check Google Sheet sharing.';
+    return;
+  }
+  if (entered !== state.passcode) {
+    loginMessage.textContent = 'The passcode is incorrect. Please try again.';
+    return;
+  }
   loginMessage.textContent = '';
   loginScreen.classList.remove('active');
   appScreen.classList.add('active');
 });
+
 $('search-btn').addEventListener('click', search);
 $('reset-search-btn').addEventListener('click', reset);
-$('logout-btn').addEventListener('click', () => { appScreen.classList.remove('active'); loginScreen.classList.add('active'); passcodeInput.value = ''; });
-passcodeInput.addEventListener('input', (event) => { event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6); });
-
+$('logout-btn').addEventListener('click', () => {
+  appScreen.classList.remove('active');
+  loginScreen.classList.add('active');
+  passcodeInput.value = '';
+});
+passcodeInput.addEventListener('input', (event) => {
+  event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6);
+});
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && appScreen.classList.contains('active')) search();
 });
