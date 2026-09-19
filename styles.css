@@ -60,11 +60,11 @@ h1,h2,h3,p { margin: 0; }
 .ghost-btn { background: #edf4ff; color: var(--primary); font-weight: 700; }
 
 .results-panel { padding: 16px; overflow: hidden; }
-.results-status { margin-bottom: 10px; color: var(--muted); font-weight: 600; font-size: .85rem; }
+.results-status { margin-bottom: 10px; color: var(--muted); font-weight: 600; font-size: .78rem; }
 .table-wrapper { overflow: auto; }
-.results-table { width: 100%; border-collapse: collapse; min-width: 700px; border: 1px solid var(--border); }
-.results-table th,.results-table td { border-bottom: 1px solid var(--border); padding: 10px 9px; text-align: left; vertical-align: top; }
-.results-table thead th { background: #edf4ff; font-size: .75rem; text-transform: uppercase; color: var(--text); }
+.results-table { width: 100%; border-collapse: collapse; min-width: 620px; border: 1px solid var(--border); font-size: .78rem; }
+.results-table th,.results-table td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; line-height: 1.25; }
+.results-table thead th { background: #edf4ff; font-size: .68rem; text-transform: uppercase; color: var(--text); }
 .results-table tbody tr:hover { background: rgba(47,111,237,.03); }
 .empty-state { padding: 18px; text-align: center; color: var(--muted); background: #f9fbff; border: 1px dashed var(--border); border-radius: 12px; }
 
@@ -84,8 +84,10 @@ h1,h2,h3,p { margin: 0; }
   .full-width { margin-top: 7px; padding: 8px 12px; }
   .results-panel { min-height: 240px; }
   .results-toolbar { margin-bottom: 6px; }
-  .results-status { margin-bottom: 6px; font-size: .75rem; }
-  .results-table th,.results-table td { padding: 8px; font-size: .76rem; }
+  .results-status { margin-bottom: 6px; font-size: .7rem; }
+  .results-table { min-width: 560px; font-size: .68rem; }
+  .results-table th,.results-table td { padding: 5px 6px; line-height: 1.2; }
+  .results-table thead th { font-size: .6rem; }
 }
 
 @media (max-width: 520px) {
@@ -95,6 +97,9 @@ h1,h2,h3,p { margin: 0; }
   #filters-container { max-height: 165px; }
   .date-range { grid-template-columns: 1fr 1fr; }
   .results-panel { padding: 9px; }
+  .results-table { min-width: 500px; font-size: .64rem; }
+  .results-table th,.results-table td { padding: 4px 5px; }
+  .results-table thead th { font-size: .56rem; }
 }
 
 @media (max-width: 360px) {
