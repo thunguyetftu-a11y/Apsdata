@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=15" />
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   </head>
   <body>
@@ -28,7 +28,7 @@
       <main class="layout"><aside class="filters-panel"><div class="panel-header"><h3>Search filters</h3><button id="reset-search-btn" class="ghost-btn small" type="button">Reset</button></div><div id="filters-container"></div><button id="search-btn" class="primary-btn full-width" type="button">Search</button></aside><section class="results-panel"><div class="results-toolbar"><div><p class="eyebrow">Results</p><h3 id="result-title">Loading data...</h3></div></div><div class="table-wrapper"><div id="results-status" class="results-status">Waiting for search.</div><table class="results-table"><thead id="results-head"></thead><tbody id="results-body"></tbody></table></div></section></main>
     </div>
     <div id="detail-modal" class="detail-modal" hidden aria-hidden="true"><div class="detail-backdrop" data-close-details></div><section class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detail-title"><div class="detail-header"><h3 id="detail-title">Record details</h3><button class="ghost-btn small" type="button" data-close-details aria-label="Close details">Close</button></div><div id="detail-content" class="detail-content"></div></section></div>
-    <script src="script.js?v=14"></script>
+    <script src="script.js?v=15"></script>
     <script>
       (() => {
         const body = document.getElementById('results-body'); const modal = document.getElementById('detail-modal'); const content = document.getElementById('detail-content'); const close = () => { modal.hidden = true; modal.setAttribute('aria-hidden', 'true'); };
