@@ -7,37 +7,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=15" />
+    <link rel="stylesheet" href="styles.css?v=16" />
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   </head>
   <body>
-    <div id="login-screen" class="screen active">
-      <div class="login-card">
-        <div class="brand-block"><span class="badge">APS</span><h1>Access Library</h1></div>
-        <p class="muted">Enter the 6-digit access code to open the data library.</p>
-        <form id="login-form" novalidate>
-          <label class="input-label" for="passcode">Passcode</label>
-          <input id="passcode" name="passcode" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" placeholder="Enter 6 digits" autocomplete="one-time-code" required />
-          <button type="submit" class="primary-btn">Access data</button>
-        </form>
-        <p id="login-message" class="status-message" aria-live="polite"></p>
-      </div>
-    </div>
-    <div id="app-screen" class="screen">
-      <header class="topbar"><div><p class="eyebrow">Google Sheet data</p><h2>APS Data Library</h2></div><div class="topbar-actions"><button id="refresh-btn" class="ghost-btn" type="button">Refresh</button><button id="top-search-btn" class="primary-btn" type="button">Search</button><button id="logout-btn" class="ghost-btn" type="button">Log out</button></div></header>
-      <main class="layout"><aside class="filters-panel"><div class="panel-header"><h3>Search filters</h3><button id="reset-search-btn" class="ghost-btn small" type="button">Reset</button></div><div id="filters-container"></div><button id="search-btn" class="primary-btn full-width" type="button">Search</button></aside><section class="results-panel"><div class="results-toolbar"><div><p class="eyebrow">Results</p><h3 id="result-title">Loading data...</h3></div></div><div class="table-wrapper"><div id="results-status" class="results-status">Waiting for search.</div><table class="results-table"><thead id="results-head"></thead><tbody id="results-body"></tbody></table></div></section></main>
-    </div>
+    <div id="login-screen" class="screen active"><div class="login-card"><div class="brand-block"><span class="badge">APS</span><h1>Access Library</h1></div><p class="muted">Enter the 6-digit access code to open the data library.</p><form id="login-form" novalidate><label class="input-label" for="passcode">Passcode</label><input id="passcode" name="passcode" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" placeholder="Enter 6 digits" autocomplete="one-time-code" required /><button type="submit" class="primary-btn">Access data</button></form><p id="login-message" class="status-message" aria-live="polite"></p></div></div>
+    <div id="app-screen" class="screen"><header class="topbar"><div><p class="eyebrow">Google Sheet data</p><h2>APS Data Library</h2></div><div class="topbar-actions"><button id="refresh-btn" class="ghost-btn" type="button">Refresh</button><button id="top-search-btn" class="primary-btn" type="button">Search</button><button id="logout-btn" class="ghost-btn" type="button">Log out</button></div></header><main class="layout"><aside class="filters-panel"><div class="panel-header"><h3>Search filters</h3><button id="reset-search-btn" class="ghost-btn small" type="button">Reset</button></div><div id="filters-container"></div><button id="search-btn" class="primary-btn full-width" type="button">Search</button></aside><section class="results-panel"><div class="results-toolbar"><div><p class="eyebrow">Results</p><h3 id="result-title">Loading data...</h3></div></div><div class="table-wrapper"><div id="results-status" class="results-status">Waiting for search.</div><table class="results-table"><thead id="results-head"></thead><tbody id="results-body"></tbody></table></div></section></main></div>
     <div id="detail-modal" class="detail-modal" hidden aria-hidden="true"><div class="detail-backdrop" data-close-details></div><section class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detail-title"><div class="detail-header"><h3 id="detail-title">Record details</h3><button class="ghost-btn small" type="button" data-close-details aria-label="Close details">Close</button></div><div id="detail-content" class="detail-content"></div></section></div>
-    <script src="script.js?v=15"></script>
-    <script>
-      (() => {
-        const body = document.getElementById('results-body'); const modal = document.getElementById('detail-modal'); const content = document.getElementById('detail-content'); const close = () => { modal.hidden = true; modal.setAttribute('aria-hidden', 'true'); };
-        const open = (row) => { content.replaceChildren(); Object.entries(row).forEach(([key, value]) => { const item = document.createElement('div'); item.className = 'detail-item'; const label = document.createElement('dt'); label.textContent = key; const data = document.createElement('dd'); data.textContent = value || '—'; item.append(label, data); content.appendChild(item); }); modal.hidden = false; modal.setAttribute('aria-hidden', 'false'); };
-        body.addEventListener('click', (event) => { const row = event.target.closest('tr'); if (row?.dataset.record) open(JSON.parse(row.dataset.record)); });
-        modal.addEventListener('click', (event) => { if (event.target.matches('[data-close-details]')) close(); }); document.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
-        const observeRows = new MutationObserver(() => { body.querySelectorAll('tr').forEach((row) => { if (row.dataset.record || row.querySelector('th')) return; const cells = [...row.cells]; const headers = [...document.querySelectorAll('#results-head th')]; if (cells.length && headers.length === cells.length) { row.dataset.record = JSON.stringify(Object.fromEntries(headers.map((header, index) => [header.textContent, cells[index].textContent]))); row.setAttribute('tabindex', '0'); row.setAttribute('aria-label', 'View record details'); } }); });
-        observeRows.observe(body, { childList: true }); body.addEventListener('keydown', (event) => { if ((event.key === 'Enter' || event.key === ' ') && event.target.closest('tr')) { event.preventDefault(); event.target.closest('tr').click(); } });
-      })();
-    </script>
+    <script src="script.js?v=16"></script>
+    <script>(function(){const body=document.getElementById('results-body'),modal=document.getElementById('detail-modal'),content=document.getElementById('detail-content'),close=()=>{modal.hidden=true;modal.setAttribute('aria-hidden','true')},open=row=>{content.replaceChildren();Object.entries(row).forEach(([key,value])=>{const item=document.createElement('div');item.className='detail-item';const label=document.createElement('dt');label.textContent=key;const data=document.createElement('dd');data.textContent=value||'—';item.append(label,data);content.appendChild(item)});modal.hidden=false;modal.setAttribute('aria-hidden','false')};body.addEventListener('click',event=>{const row=event.target.closest('tr');if(row?.dataset.record)open(JSON.parse(row.dataset.record))});modal.addEventListener('click',event=>{if(event.target.matches('[data-close-details]'))close()});document.addEventListener('keydown',event=>{if(event.key==='Escape')close()});new MutationObserver(()=>{body.querySelectorAll('tr').forEach(row=>{if(row.dataset.record||row.querySelector('th'))return;const cells=[...row.cells],headers=[...document.querySelectorAll('#results-head th')];if(cells.length&&headers.length===cells.length){row.dataset.record=JSON.stringify(Object.fromEntries(headers.map((header,index)=>[header.textContent,cells[index].textContent])));row.tabIndex=0;row.setAttribute('aria-label','View record details')}})}).observe(body,{childList:true});body.addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.closest('tr')){event.preventDefault();event.target.closest('tr').click()}})})()</script>
   </body>
 </html>
