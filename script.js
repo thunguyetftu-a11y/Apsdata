@@ -21,13 +21,8 @@ const DATE_COLUMNS = new Set(['INV Date', 'T&C Date', 'Ex-factory', 'Expiry date
 const HIDDEN_FILTERS = new Set(['total quantity']);
 const DROPDOWN_COLUMNS = new Set(['model type', 'model type 2']);
 
-function clean(value) {
-  return String(value ?? '').replace(/\uFEFF/g, '').trim();
-}
-
-function normalize(value) {
-  return clean(value).toLowerCase();
-}
+function clean(value) { return String(value ?? '').replace(/\uFEFF/g, '').trim(); }
+function normalize(value) { return clean(value).toLowerCase(); }
 
 async function fetchCsv(gid) {
   const response = await fetch(`${csvBase}${gid}&_=${Date.now()}`, { cache: 'no-store' });
@@ -38,77 +33,50 @@ async function fetchCsv(gid) {
 function readPasscode(rows) {
   for (const row of rows) {
     for (let i = 0; i < row.length - 1; i += 1) {
-      if (normalize(row[i]) === 'passcode') {
-        const value = clean(row[i + 1]);
-        if (value) return value;
-      }
+      if (normalize(row[i]) === 'passcode' && clean(row[i + 1])) return clean(row[i + 1]);
     }
   }
   return null;
 }
 
-async function loadData() {
+async function loadData({ preserveView = true } = {}) {
   try {
     resultsStatus.textContent = 'Loading live data from Google Sheet...';
-    const [settingsText, mainText] = await Promise.all([
-      fetchCsv(SETTINGS_GID),
-      fetchCsv(MAIN_GID),
-    ]);
+    const [settingsText, mainText] = await Promise.all([fetchCsv(SETTINGS_GID), fetchCsv(MAIN_GID)]);
     const settings = Papa.parse(settingsText, { skipEmptyLines: true }).data;
     const parsedMain = Papa.parse(mainText, { skipEmptyLines: true }).data;
     state.passcode = readPasscode(settings);
-    if (!state.passcode) throw new Error('Passcode was not found in the Settings sheet.');
+    if (!state.passcode) throw new Error('Passcode was not found in Settings.');
     if (!parsedMain.length) throw new Error('Main sheet is empty.');
 
     state.columns = parsedMain[0].map(clean).filter(Boolean);
-    state.rows = parsedMain.slice(1).map((row) => Object.fromEntries(
-      state.columns.map((column, index) => [column, row[index] ?? ''])
-    ));
+    state.rows = parsedMain.slice(1).map((row) => Object.fromEntries(state.columns.map((column, index) => [column, row[index] ?? ''])));
     renderFilters();
     resultTitle.textContent = `${state.rows.length} records loaded`;
-    resultsStatus.textContent = 'Live data loaded. Ready for keyword and date search.';
+    resultsStatus.textContent = 'Live data loaded.';
 
-    // Keep access after a normal browser refresh during the current tab session.
-    // The passcode is still required again after Log out or closing the tab.
-    if (sessionStorage.getItem(AUTH_SESSION_KEY) === 'true') {
-      showApp();
-    }
+    if (preserveView && sessionStorage.getItem(AUTH_SESSION_KEY) === 'true') showApp();
   } catch (error) {
     console.error(error);
     resultTitle.textContent = 'Data unavailable';
     resultsStatus.textContent = 'Cannot read the public Google Sheet. Confirm sharing is “Anyone with the link → Viewer”.';
-    loginMessage.textContent = 'The access code could not be loaded from Settings.';
+    if (!state.passcode) loginMessage.textContent = 'The access code could not be loaded from Settings.';
   }
 }
 
-function valuesFor(column) {
-  return [...new Set(state.rows.map((row) => clean(row[column])).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b));
-}
-
-function isDateColumn(column) {
-  return DATE_COLUMNS.has(column) || /date|time|created|updated/i.test(column);
-}
-
-function isHiddenFilter(column) {
-  return HIDDEN_FILTERS.has(normalize(column));
-}
-
-function isDropdownColumn(column) {
-  return DROPDOWN_COLUMNS.has(normalize(column)) || !isDateColumn(column);
-}
+function valuesFor(column) { return [...new Set(state.rows.map((row) => clean(row[column])).filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
+function isDateColumn(column) { return DATE_COLUMNS.has(column) || /date|time|created|updated/i.test(column); }
+function isHiddenFilter(column) { return HIDDEN_FILTERS.has(normalize(column)); }
+function isDropdownColumn(column) { return DROPDOWN_COLUMNS.has(normalize(column)) || !isDateColumn(column); }
 
 function makeOptions(column) {
   const details = document.createElement('details');
   details.className = 'value-dropdown';
-
   const summary = document.createElement('summary');
   summary.textContent = 'Choose one or more values';
   details.appendChild(summary);
-
   const options = document.createElement('div');
   options.className = 'field-options';
-
   valuesFor(column).forEach((value) => {
     const label = document.createElement('label');
     label.className = 'option-item';
@@ -121,24 +89,19 @@ function makeOptions(column) {
     label.append(checkbox, text);
     options.appendChild(label);
   });
-
   details.appendChild(options);
   return details;
 }
 
 function renderFilters() {
   filtersContainer.replaceChildren();
-
   state.columns.forEach((column) => {
     if (isHiddenFilter(column)) return;
-
     const group = document.createElement('div');
     group.className = 'filter-group';
-
     const title = document.createElement('h4');
     title.textContent = column;
     group.appendChild(title);
-
     const inputs = document.createElement('div');
     inputs.className = 'filter-inputs';
 
@@ -146,24 +109,14 @@ function renderFilters() {
       const range = document.createElement('div');
       range.className = 'date-range';
       const from = document.createElement('input');
-      from.type = 'date';
-      from.dataset.dateStart = column;
-      from.setAttribute('aria-label', `${column} from date`);
-      from.title = 'From';
+      from.type = 'date'; from.dataset.dateStart = column; from.title = 'From';
       const to = document.createElement('input');
-      to.type = 'date';
-      to.dataset.dateEnd = column;
-      to.setAttribute('aria-label', `${column} to date`);
-      to.title = 'To';
-      range.append(from, to);
-      inputs.appendChild(range);
+      to.type = 'date'; to.dataset.dateEnd = column; to.title = 'To';
+      range.append(from, to); inputs.appendChild(range);
     } else {
       const search = document.createElement('input');
-      search.type = 'text';
-      search.placeholder = `Search ${column}`;
-      search.dataset.column = column;
+      search.type = 'text'; search.placeholder = `Search ${column}`; search.dataset.column = column;
       inputs.appendChild(search);
-
       if (isDropdownColumn(column)) inputs.appendChild(makeOptions(column));
     }
 
@@ -173,16 +126,11 @@ function renderFilters() {
       note.textContent = 'Options update automatically when new values are added to the Google Sheet.';
       inputs.appendChild(note);
     }
-
-    group.appendChild(inputs);
-    filtersContainer.appendChild(group);
+    group.appendChild(inputs); filtersContainer.appendChild(group);
   });
 }
 
-function keywords(value) {
-  return clean(value).split(/[ ,;|\n]+/).map(normalize).filter(Boolean);
-}
-
+function keywords(value) { return clean(value).split(/[ ,;|\n]+/).map(normalize).filter(Boolean); }
 function toDate(value) {
   const text = clean(value);
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
@@ -195,15 +143,10 @@ function toDate(value) {
 function getCriteria() {
   return Object.fromEntries(state.columns.map((column) => {
     if (isHiddenFilter(column)) return [column, { text: [], selected: [], from: '', to: '' }];
-    const search = [...document.querySelectorAll('input[type="text"][data-column]')]
-      .find((input) => input.dataset.column === column);
-    const selected = [...document.querySelectorAll('input[type="checkbox"][data-column]')]
-      .filter((input) => input.dataset.column === column && input.checked)
-      .map((input) => normalize(input.value));
-    const from = [...document.querySelectorAll('[data-date-start]')]
-      .find((input) => input.dataset.dateStart === column);
-    const to = [...document.querySelectorAll('[data-date-end]')]
-      .find((input) => input.dataset.dateEnd === column);
+    const search = [...document.querySelectorAll('input[type="text"][data-column]')].find((input) => input.dataset.column === column);
+    const selected = [...document.querySelectorAll('input[type="checkbox"][data-column]')].filter((input) => input.dataset.column === column && input.checked).map((input) => normalize(input.value));
+    const from = [...document.querySelectorAll('[data-date-start]')].find((input) => input.dataset.dateStart === column);
+    const to = [...document.querySelectorAll('[data-date-end]')].find((input) => input.dataset.dateEnd === column);
     return [column, { text: keywords(search?.value), selected, from: from?.value || '', to: to?.value || '' }];
   }));
 }
@@ -225,8 +168,7 @@ function matches(row, filters) {
 function validateExtendYear() {
   const column = state.columns.find((item) => normalize(item) === 'extend year');
   if (!column) return true;
-  const input = [...document.querySelectorAll('input[type="text"][data-column]')]
-    .find((item) => item.dataset.column === column);
+  const input = [...document.querySelectorAll('input[type="text"][data-column]')].find((item) => item.dataset.column === column);
   const value = clean(input?.value);
   if (value && !/^\d+(\.\d+)?$/.test(value)) {
     alert('Extend year must contain a decimal number only, for example 1 or 1.5.');
@@ -237,91 +179,53 @@ function validateExtendYear() {
 }
 
 function renderResults(rows) {
-  resultsHead.replaceChildren();
-  resultsBody.replaceChildren();
+  resultsHead.replaceChildren(); resultsBody.replaceChildren();
   if (!rows.length) {
-    resultTitle.textContent = 'No results';
-    resultsStatus.textContent = 'No matching records were found.';
-    resultsBody.innerHTML = '<tr><td colspan="100%"><div class="empty-state">No matching data found.</div></td></tr>';
-    return;
+    resultTitle.textContent = 'No results'; resultsStatus.textContent = 'No matching records were found.';
+    resultsBody.innerHTML = '<tr><td colspan="100%"><div class="empty-state">No matching data found.</div></td></tr>'; return;
   }
-  resultTitle.textContent = `${rows.length} result${rows.length === 1 ? '' : 's'}`;
-  resultsStatus.textContent = 'Results updated.';
+  resultTitle.textContent = `${rows.length} result${rows.length === 1 ? '' : 's'}`; resultsStatus.textContent = 'Results updated.';
   const header = document.createElement('tr');
-  state.columns.forEach((column) => {
-    const th = document.createElement('th');
-    th.textContent = column;
-    header.appendChild(th);
-  });
+  state.columns.forEach((column) => { const th = document.createElement('th'); th.textContent = column; header.appendChild(th); });
   resultsHead.appendChild(header);
-  rows.forEach((row) => {
-    const tr = document.createElement('tr');
-    state.columns.forEach((column) => {
-      const td = document.createElement('td');
-      td.textContent = row[column] ?? '';
-      tr.appendChild(td);
-    });
-    resultsBody.appendChild(tr);
-  });
+  rows.forEach((row) => { const tr = document.createElement('tr'); state.columns.forEach((column) => { const td = document.createElement('td'); td.textContent = row[column] ?? ''; tr.appendChild(td); }); resultsBody.appendChild(tr); });
 }
 
 function search() {
   if (!validateExtendYear()) return;
-  resultsHead.replaceChildren();
-  resultsBody.replaceChildren();
-  resultsStatus.textContent = 'Searching...';
+  resultsHead.replaceChildren(); resultsBody.replaceChildren(); resultsStatus.textContent = 'Searching...';
   renderResults(state.rows.filter((row) => matches(row, getCriteria())));
 }
 
 function reset() {
-  filtersContainer.querySelectorAll('input').forEach((input) => {
-    input.checked = false;
-    input.value = '';
-  });
-  resultsHead.replaceChildren();
-  resultsBody.replaceChildren();
-  resultsStatus.textContent = 'Filters reset.';
+  filtersContainer.querySelectorAll('input').forEach((input) => { input.checked = false; input.value = ''; });
+  resultsHead.replaceChildren(); resultsBody.replaceChildren(); resultsStatus.textContent = 'Filters reset.';
 }
 
-function showApp() {
-  loginScreen.classList.remove('active');
-  appScreen.classList.add('active');
-}
-
-function showLogin() {
-  appScreen.classList.remove('active');
-  loginScreen.classList.add('active');
-  passcodeInput.value = '';
-  passcodeInput.focus();
-}
+function showApp() { loginScreen.classList.remove('active'); appScreen.classList.add('active'); }
+function showLogin() { appScreen.classList.remove('active'); loginScreen.classList.add('active'); passcodeInput.value = ''; passcodeInput.focus(); }
 
 loginForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const entered = clean(passcodeInput.value);
-  if (!state.passcode) {
-    loginMessage.textContent = 'Passcode is unavailable. Check Google Sheet sharing.';
-    return;
-  }
-  if (entered !== state.passcode) {
-    loginMessage.textContent = 'The passcode is incorrect. Please try again.';
-    return;
-  }
-  sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
-  loginMessage.textContent = '';
-  showApp();
+  if (!state.passcode) { loginMessage.textContent = 'Passcode is unavailable. Check Google Sheet sharing.'; return; }
+  if (entered !== state.passcode) { loginMessage.textContent = 'The passcode is incorrect. Please try again.'; return; }
+  sessionStorage.setItem(AUTH_SESSION_KEY, 'true'); loginMessage.textContent = ''; showApp();
 });
 
 $('search-btn').addEventListener('click', search);
+$('top-search-btn').addEventListener('click', search);
 $('reset-search-btn').addEventListener('click', reset);
-$('logout-btn').addEventListener('click', () => {
-  sessionStorage.removeItem(AUTH_SESSION_KEY);
-  showLogin();
+$('refresh-btn').addEventListener('click', async () => {
+  const refreshButton = $('refresh-btn');
+  refreshButton.disabled = true;
+  refreshButton.textContent = 'Refreshing...';
+  await loadData({ preserveView: true });
+  refreshButton.disabled = false;
+  refreshButton.textContent = 'Refresh';
 });
-passcodeInput.addEventListener('input', (event) => {
-  event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6);
-});
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && appScreen.classList.contains('active')) search();
-});
+$('logout-btn').addEventListener('click', () => { sessionStorage.removeItem(AUTH_SESSION_KEY); showLogin(); });
+passcodeInput.addEventListener('input', (event) => { event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Enter' && appScreen.classList.contains('active')) search(); });
 
 loadData();
