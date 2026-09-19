@@ -140,7 +140,7 @@ function renderFilters() {
     }
     if (['model type'].includes(normalize(column))) {
       const note = document.createElement('small'); note.className = 'field-note';
-      note.textContent = 'Options update automatically when new values are added to the Google Sheet.';
+      note.textContent = 'Select';
       inputs.appendChild(note);
     }
     group.appendChild(inputs); filtersContainer.appendChild(group);
