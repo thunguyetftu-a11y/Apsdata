@@ -1,7 +1,7 @@
 const SHEET_ID = '1uS-22GKtiiWrawzIUwsqrW6wOODuYDWwo3bbD_TFK48';
 const MAIN_GID = '0';
-const SETTINGS_GID = '0';
-const DEFAULT_PASSCODE = '123456';
+const SETTINGS_GID = '1384681035';
+const DEFAULT_PASSCODE = '123056';
 
 const state = {
   columns: [],
