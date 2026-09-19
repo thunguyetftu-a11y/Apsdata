@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>APS Data Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  </head>
+  <body>
+    <div id="login-screen" class="screen active">
+      <div class="card login-card">
+        <div class="brand-block">
+          <span class="badge">APS</span>
+          <h1>Access Library</h1>
+        </div>
+        <p class="muted">Enter the 6-digit access code to open the data library.</p>
+        <form id="login-form" novalidate>
+          <label class="input-label" for="passcode">Passcode</label>
+          <input
+            id="passcode"
+            name="passcode"
+            type="password"
+            inputmode="numeric"
+            maxlength="6"
+            pattern="[0-9]*"
+            placeholder="Enter 6 digits"
+            autocomplete="one-time-code"
+            required
+          />
+          <button type="submit" class="primary-btn">Access data</button>
+        </form>
+        <p id="login-message" class="status-message" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div id="app-screen" class="screen">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Google Sheet data</p>
+          <h2>APS Data Library</h2>
+        </div>
+        <button id="logout-btn" class="ghost-btn" type="button">Log out</button>
+      </header>
+
+      <main class="layout">
+        <aside class="filters-panel">
+          <div class="panel-header">
+            <h3>Search filters</h3>
+            <button id="reset-search-btn" class="ghost-btn small" type="button">Reset</button>
+          </div>
+          <div id="filters-container"></div>
+          <button id="search-btn" class="primary-btn full-width" type="button">Search</button>
+        </aside>
+
+        <section class="results-panel">
+          <div class="results-toolbar">
+            <div>
+              <p class="eyebrow">Results</p>
+              <h3 id="result-title">Loading data...</h3>
+            </div>
+          </div>
+
+          <div id="results-wrapper" class="table-wrapper">
+            <div id="results-status" class="results-status">Waiting for search.</div>
+            <table id="results-table" class="results-table">
+              <thead id="results-head"></thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
