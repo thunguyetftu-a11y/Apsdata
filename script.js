@@ -12,6 +12,7 @@ const csvBase = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?forma
 const DATE_COLUMNS = new Set(['INV Date', 'T&C Date', 'Ex-factory', 'Expiry date']);
 const HIDDEN_FILTERS = new Set(['total quantity', 'ex-factory', 'remark', 'model type 2']);
 const DROPDOWN_COLUMNS = new Set(['model type']);
+const NO_DROPDOWN_COLUMNS= new Set(['add']);
 function clean(value) { return String(value ?? '').replace(/\uFEFF/g, '').trim(); }
 function normalize(value) { return clean(value).toLowerCase(); }
 async function fetchCsv(gid) { const response = await fetch(`${csvBase}${gid}&_=${Date.now()}`, { cache: 'no-store' }); if (!response.ok) throw new Error(`Google Sheet request failed: ${response.status}`); return response.text(); }
@@ -30,7 +31,19 @@ async function loadData({ preserveView = true } = {}) {
 function valuesFor(column) { return [...new Set(state.rows.map((row) => clean(row[column])).filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
 function isDateColumn(column) { return DATE_COLUMNS.has(column) || /date|time|created|updated/i.test(column); }
 function isHiddenFilter(column) { return HIDDEN_FILTERS.has(normalize(column)); }
-function isDropdownColumn(column) { return DROPDOWN_COLUMNS.has(normalize(column)) || !isDateColumn(column); }
+function isDropdownColumn(column) {
+
+  const name =
+    normalize(column);
+
+  return (
+    !NO_DROPDOWN_COLUMNS.has(name) &&
+    (
+      DROPDOWN_COLUMNS.has(name) ||
+      !isDateColumn(column)
+    )
+  );
+}
 function makeOptions(column) {
   const details = document.createElement('details'); details.className = 'value-dropdown'; const summary = document.createElement('summary'); summary.textContent = 'Select'; details.appendChild(summary);
   const options = document.createElement('div'); options.className = 'field-options';
