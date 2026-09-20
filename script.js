@@ -12,7 +12,7 @@ const csvBase = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?forma
 const DATE_COLUMNS = new Set(['INV Date', 'T&C Date', 'Ex-factory', 'Expiry date']);
 const HIDDEN_FILTERS = new Set(['total quantity', 'ex-factory', 'remark', 'model type 2']);
 const DROPDOWN_COLUMNS = new Set(['model type']);
-const NO_DROPDOWN_COLUMNS= new Set(['add']);
+const NO_DROPDOWN_COLUMNS= new Set(['add','inv no.']);
 function clean(value) { return String(value ?? '').replace(/\uFEFF/g, '').trim(); }
 function normalize(value) { return clean(value).toLowerCase(); }
 async function fetchCsv(gid) { const response = await fetch(`${csvBase}${gid}&_=${Date.now()}`, { cache: 'no-store' }); if (!response.ok) throw new Error(`Google Sheet request failed: ${response.status}`); return response.text(); }
