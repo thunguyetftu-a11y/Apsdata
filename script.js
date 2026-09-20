@@ -12,7 +12,7 @@ const csvBase = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?forma
 const DATE_COLUMNS = new Set(['INV Date', 'T&C Date', 'Ex-factory', 'Expiry date']);
 const HIDDEN_FILTERS = new Set(['total quantity', 'ex-factory', 'remark', 'model type 2']);
 const DROPDOWN_COLUMNS = new Set(['model type']);
-const NO_DROPDOWN_COLUMNS= new Set(['add','inv no.']);
+const NO_DROPDOWN_COLUMNS= new Set(['add','inv no.','t&c pic']);
 function clean(value) { return String(value ?? '').replace(/\uFEFF/g, '').trim(); }
 function normalize(value) { return clean(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
 async function fetchCsv(gid) { const response = await fetch(`${csvBase}${gid}&_=${Date.now()}`, { cache: 'no-store' }); if (!response.ok) throw new Error(`Google Sheet request failed: ${response.status}`); return response.text(); }
@@ -53,15 +53,101 @@ function isDropdownColumn(column) {
   );
 }
 function makeOptions(column) {
-  const details = document.createElement('details'); details.className = 'value-dropdown'; const summary = document.createElement('summary'); summary.textContent = 'Select'; details.appendChild(summary);
-  const options = document.createElement('div'); options.className = 'field-options';
-  valuesFor(column).forEach((value) => { const label = document.createElement('label'); label.className = 'option-item'; const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.dataset.column = column; checkbox.value = value; const text = document.createElement('span'); text.textContent = value; label.append(checkbox, text); options.appendChild(label); });
-  details.appendChild(options); return details;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'filter-search-dropdown';
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'filter-dropdown';
+
+    valuesFor(column).forEach((value) => {
+
+        const label = document.createElement('label');
+        label.className = 'option-item';
+
+        label.dataset.value = normalize(value);
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.column = column;
+        checkbox.value = value;
+
+        const text = document.createElement('span');
+        text.textContent = value;
+
+        label.append(checkbox, text);
+
+        dropdown.appendChild(label);
+
+    });
+
+    wrapper.appendChild(dropdown);
+
+    return wrapper;
 }
+
 function renderFilters() {
   filtersContainer.replaceChildren(); state.columns.forEach((column) => { if (isHiddenFilter(column)) return; const group = document.createElement('div'); group.className = 'filter-group'; const title = document.createElement('h4'); title.textContent = column; group.appendChild(title); const inputs = document.createElement('div'); inputs.className = 'filter-inputs';
     if (isDateColumn(column)) { const range = document.createElement('div'); range.className = 'date-range'; const from = document.createElement('input'); from.type = 'date'; from.dataset.dateStart = column; from.title = 'From'; const to = document.createElement('input'); to.type = 'date'; to.dataset.dateEnd = column; to.title = 'To'; range.append(from, to); inputs.appendChild(range); }
-    else { const search = document.createElement('input'); search.type = 'text'; search.placeholder = `Search ${column}`; search.dataset.column = column; inputs.appendChild(search); if (isDropdownColumn(column)) inputs.appendChild(makeOptions(column)); }
+    else {const search = document.createElement('input');
+search.type = 'text';
+search.placeholder = `Search ${column}`;
+search.dataset.column = column;
+
+const container = document.createElement('div');
+container.className = 'search-dropdown-container';
+
+container.appendChild(search);
+
+if (isDropdownColumn(column)) {
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'dropdown-arrow';
+    button.innerHTML = '▼';
+
+    const dropdown = makeOptions(column);
+
+    button.addEventListener('click', () => {
+
+        dropdown.classList.toggle('open');
+
+    });
+
+    search.addEventListener('input', () => {
+
+        const keyword = normalize(search.value);
+
+        dropdown.classList.add('open');
+
+        dropdown
+        .querySelectorAll('.option-item')
+        .forEach(item => {
+
+            const value = item.dataset.value;
+
+            item.style.display =
+                !keyword || value.includes(keyword)
+                    ? ''
+                    : 'none';
+
+        });
+
+    });
+
+    container.appendChild(button);
+    container.appendChild(dropdown);
+}
+
+inputs.appendChild(container);  inputs.appendChild(search); search.addEventListener('input', () => {
+const dropdown =inputs.querySelector('.value-dropdown');
+if (!dropdown) return;const keyword =normalize(search.value);
+const items =dropdown.querySelectorAll('.option-item');
+if (!keyword) {items.forEach(item => {item.style.display = '';});
+dropdown.open = false;return;}dropdown.open = true;items.forEach(item => {
+
+const value =item.dataset.value || '';item.style.display =value.includes(keyword)? ''
+: 'none';});});}
     group.appendChild(inputs); filtersContainer.appendChild(group);
   });
 }
@@ -76,7 +162,12 @@ function getCriteria() {
   return Object.fromEntries(state.columns.map((column) => { if (isHiddenFilter(column)) return [column, { text: [], selected: [], from: '', to: '' }]; const search = [...document.querySelectorAll('input[type="text"][data-column]')].find((input) => input.dataset.column === column); const selected = [...document.querySelectorAll('input[type="checkbox"][data-column]')].filter((input) => input.dataset.column === column && input.checked).map((input) => normalize(input.value)); const from = [...document.querySelectorAll('[data-date-start]')].find((input) => input.dataset.dateStart === column); const to = [...document.querySelectorAll('[data-date-end]')].find((input) => input.dataset.dateEnd === column); return [column, { text: keywords(search?.value), selected, from: from?.value || '', to: to?.value || '' }]; }));
 }
 function hasActiveCriteria(filters) { return Object.values(filters).some((filter) => filter.text.length || filter.selected.length || filter.from || filter.to); }
-function matches(row, filters) { return state.columns.every((column) => { const filter = filters[column]; const value = normalize(row[column]); if (filter.text.length && !filter.text.some(term => matchSearch(value,term))){ return false;} if (filter.selected.length && !filter.selected.includes(value)) return false; if (filter.from || filter.to) { const date = toDate(row[column]); if (!date || (filter.from && date < filter.from) || (filter.to && date > filter.to)) return false; } return true; }); }
+function matches(row, filters) { return state.columns.every((column) => { const filter = filters[column]; const value = normalize(row[column]); // ưu tiên checkbox
+if (filter.selected.length) {if (!filter.selected.includes(value))return false;}
+else {if (filter.text.length &&!filter.text.some(term =>matchSearch(value, term))
+) {return false;}}if (filter.from || filter.to) {const date = toDate(row[column]);if (!date ||
+(filter.from && date < filter.from) ||(filter.to && date > filter.to)) {return false;}}return true;});}
+ 
 function validateExtendYear() { const column = state.columns.find((item) => normalize(item) === 'extend year'); if (!column) return true; const input = [...document.querySelectorAll('input[type="text"][data-column]')].find((item) => item.dataset.column === column); const value = clean(input?.value); if (value && !/^\d+(\.\d+)?$/.test(value)) { alert('Extend year must contain a decimal number only, for example 1 or 1.5.'); input.focus(); return false; } return true; }
 function renderResults(rows) {
   resultsHead.replaceChildren(); resultsBody.replaceChildren(); if (!rows.length) { resultTitle.textContent = 'No results'; resultsStatus.textContent = 'No matching records were found.'; resultsBody.innerHTML = '<tr><td colspan="100%"><div class="empty-state">No matching data found.</div></td></tr>'; return; }
@@ -94,3 +185,11 @@ $('search-btn')?.addEventListener('click', search); $('top-search-btn')?.addEven
 $('refresh-btn')?.addEventListener('click', async () => { const button = $('refresh-btn'); button.disabled = true; button.textContent = 'Refreshing...'; await loadData({ preserveView: true }); button.disabled = false; button.textContent = 'Refresh'; });
 $('logout-btn')?.addEventListener('click', () => { sessionStorage.removeItem(AUTH_SESSION_KEY); showLogin(); }); passcodeInput.addEventListener('input', (event) => { event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6); }); document.addEventListener('keydown', (event) => { if (event.key === 'Enter' && appScreen.classList.contains('active')) search(); });
 const usedCache = readCache(); loadData({ preserveView: true, background: usedCache });
+const rect = container.getBoundingClientRect();
+
+if (window.innerWidth - rect.right < 520) {
+    dropdown
+      .querySelector('.filter-dropdown')
+      .classList.add('dropdown-right');
+}
+
