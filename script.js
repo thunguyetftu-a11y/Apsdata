@@ -25,23 +25,14 @@ function applyData(settingsText, mainText) {
 function readCache() { try { const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); if (!cached?.settingsText || !cached?.mainText) return false; applyData(cached.settingsText, cached.mainText); resultsStatus.textContent = 'Cached data ready. Updating in background...'; return true; } catch (error) { sessionStorage.removeItem(CACHE_KEY); return false; } }
 async function loadData({ preserveView = true } = {}) {
   const hadCachedData = state.ready || readCache(); if (!hadCachedData) resultsStatus.textContent = 'Loading data...';
-  try { const [settingsText, mainText] = await Promise.all([fetchCsv(SETTINGS_GID), fetchCsv(MAIN_GID)]); applyData(settingsText, mainText); sessionStorage.setItem(CACHE_KEY, JSON.stringify({ settingsText, mainText })); resultsStatus.textContent = 'Live data ready.'; const savedPasscode =
+  try { const [settingsText, mainText] = await Promise.all([fetchCsv(SETTINGS_GID), fetchCsv(MAIN_GID)]); applyData(settingsText, mainText); sessionStorage.setItem(CACHE_KEY, JSON.stringify({ settingsText, mainText })); resultsStatus.textContent = 'Live data ready.'; if (
+    preserveView &&
     sessionStorage.getItem(
         AUTH_SESSION_KEY
-    );
-
-if (
-    preserveView &&
-    savedPasscode === state.passcode
-) {
+    ) === 'true'
+)
+{
     showApp();
-}
-else {
-    sessionStorage.removeItem(
-        AUTH_SESSION_KEY
-    );
-
-    showLogin();
 }}
   catch (error) { console.error(error); if (!hadCachedData) { resultTitle.textContent = 'Data unavailable'; resultsStatus.textContent = 'Unable to load data. Check Google Sheet sharing.'; loginMessage.textContent = 'The access code could not be loaded from Settings.'; } else resultsStatus.textContent = 'Showing cached data. Live update failed.'; }
 }
