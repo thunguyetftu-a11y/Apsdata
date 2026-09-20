@@ -42,7 +42,7 @@ else {
     );
 
     showLogin();
-}
+}}
   catch (error) { console.error(error); if (!hadCachedData) { resultTitle.textContent = 'Data unavailable'; resultsStatus.textContent = 'Unable to load data. Check Google Sheet sharing.'; loginMessage.textContent = 'The access code could not be loaded from Settings.'; } else resultsStatus.textContent = 'Showing cached data. Live update failed.'; }
 }
 function valuesFor(column) { return [...new Set(state.rows.map((row) => clean(row[column])).filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
