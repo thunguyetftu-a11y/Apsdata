@@ -25,7 +25,24 @@ function applyData(settingsText, mainText) {
 function readCache() { try { const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); if (!cached?.settingsText || !cached?.mainText) return false; applyData(cached.settingsText, cached.mainText); resultsStatus.textContent = 'Cached data ready. Updating in background...'; return true; } catch (error) { sessionStorage.removeItem(CACHE_KEY); return false; } }
 async function loadData({ preserveView = true } = {}) {
   const hadCachedData = state.ready || readCache(); if (!hadCachedData) resultsStatus.textContent = 'Loading data...';
-  try { const [settingsText, mainText] = await Promise.all([fetchCsv(SETTINGS_GID), fetchCsv(MAIN_GID)]); applyData(settingsText, mainText); sessionStorage.setItem(CACHE_KEY, JSON.stringify({ settingsText, mainText })); resultsStatus.textContent = 'Live data ready.'; if (preserveView && sessionStorage.getItem(AUTH_SESSION_KEY) === 'true') showApp(); }
+  try { const [settingsText, mainText] = await Promise.all([fetchCsv(SETTINGS_GID), fetchCsv(MAIN_GID)]); applyData(settingsText, mainText); sessionStorage.setItem(CACHE_KEY, JSON.stringify({ settingsText, mainText })); resultsStatus.textContent = 'Live data ready.'; const savedPasscode =
+    sessionStorage.getItem(
+        AUTH_SESSION_KEY
+    );
+
+if (
+    preserveView &&
+    savedPasscode === state.passcode
+) {
+    showApp();
+}
+else {
+    sessionStorage.removeItem(
+        AUTH_SESSION_KEY
+    );
+
+    showLogin();
+}
   catch (error) { console.error(error); if (!hadCachedData) { resultTitle.textContent = 'Data unavailable'; resultsStatus.textContent = 'Unable to load data. Check Google Sheet sharing.'; loginMessage.textContent = 'The access code could not be loaded from Settings.'; } else resultsStatus.textContent = 'Showing cached data. Live update failed.'; }
 }
 function valuesFor(column) { return [...new Set(state.rows.map((row) => clean(row[column])).filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
@@ -76,7 +93,7 @@ function search() { if (!state.ready) { resultsStatus.textContent = 'Data is sti
 function reset() { filtersContainer.querySelectorAll('input').forEach((input) => { input.checked = false; input.value = ''; }); resultsHead.replaceChildren(); resultsBody.replaceChildren(); resultTitle.textContent = 'Ready to search'; resultsStatus.textContent = 'Filters reset.'; }
 function showApp() { loginScreen.classList.remove('active'); appScreen.classList.add('active'); }
 function showLogin() { appScreen.classList.remove('active'); loginScreen.classList.add('active'); passcodeInput.value = ''; passcodeInput.focus(); }
-loginForm.addEventListener('submit', (event) => { event.preventDefault(); const entered = clean(passcodeInput.value); if (!state.passcode) { loginMessage.textContent = 'Passcode is unavailable. Check Google Sheet sharing.'; return; } if (entered !== state.passcode) { loginMessage.textContent = 'The passcode is incorrect. Please try again.'; return; } sessionStorage.setItem(AUTH_SESSION_KEY, 'true'); loginMessage.textContent = ''; showApp(); });
+loginForm.addEventListener('submit', (event) => { event.preventDefault(); const entered = clean(passcodeInput.value); if (!state.passcode) { loginMessage.textContent = 'Passcode is unavailable. Check Google Sheet sharing.'; return; } if (entered !== state.passcode) { loginMessage.textContent = 'The passcode is incorrect. Please try again.'; return; } sessionStorage.setItem(AUTH_SESSION_KEY, state.passcode); loginMessage.textContent = ''; showApp(); });
 $('search-btn')?.addEventListener('click', search); $('top-search-btn')?.addEventListener('click', search); $('reset-search-btn')?.addEventListener('click', reset);
 $('refresh-btn')?.addEventListener('click', async () => { const button = $('refresh-btn'); button.disabled = true; button.textContent = 'Refreshing...'; await loadData({ preserveView: true }); button.disabled = false; button.textContent = 'Refresh'; });
 $('logout-btn')?.addEventListener('click', () => { sessionStorage.removeItem(AUTH_SESSION_KEY); showLogin(); }); passcodeInput.addEventListener('input', (event) => { event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6); }); document.addEventListener('keydown', (event) => { if (event.key === 'Enter' && appScreen.classList.contains('active')) search(); });
