@@ -14,7 +14,7 @@ const HIDDEN_FILTERS = new Set(['total quantity', 'ex-factory', 'remark', 'model
 const DROPDOWN_COLUMNS = new Set(['model type']);
 const NO_DROPDOWN_COLUMNS= new Set(['add','inv no.']);
 function clean(value) { return String(value ?? '').replace(/\uFEFF/g, '').trim(); }
-function normalize(value) { return clean(value).toLowerCase(); }
+function normalize(value) { return clean(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
 async function fetchCsv(gid) { const response = await fetch(`${csvBase}${gid}&_=${Date.now()}`, { cache: 'no-store' }); if (!response.ok) throw new Error(`Google Sheet request failed: ${response.status}`); return response.text(); }
 function readPasscode(rows) { for (const row of rows) for (let i = 0; i < row.length - 1; i += 1) if (normalize(row[i]) === 'passcode' && clean(row[i + 1])) return clean(row[i + 1]); return null; }
 function applyData(settingsText, mainText) {
@@ -29,7 +29,7 @@ async function loadData({ preserveView = true } = {}) {
     preserveView &&
     sessionStorage.getItem(
         AUTH_SESSION_KEY
-    ) === 'true'
+    ) === 'state.passcode'
 )
 {
     showApp();
@@ -65,13 +65,18 @@ function renderFilters() {
     group.appendChild(inputs); filtersContainer.appendChild(group);
   });
 }
-function keywords(value) { return clean(value).split(/[ ,;|\n]+/).map(normalize).filter(Boolean); }
+function keywords(value) { const text=normalize(value); return text ? [text]:[]; }
+function matchSearch(text,search){if (!text || !search) {return false;}
+ text = normalize(text);search=normalize(search);//*long*thanh*
+if(search.startsWith('*')&&search.endsWith('*')){const parts=search.slice(1,-1).split('*').map(item=>item.trim()).filter(Boolean);return parts.every(part=>text.includes(part));}//mac dinh tim dung cum
+const words=search.split(/\s+/).filter(Boolean); return words.every(word=>
+text.includes(word));}
 function toDate(value) { const text = clean(value); if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text; const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (match) return `${match[3]}-${match[2]}-${match[1]}`; const date = new Date(text); return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10); }
 function getCriteria() {
   return Object.fromEntries(state.columns.map((column) => { if (isHiddenFilter(column)) return [column, { text: [], selected: [], from: '', to: '' }]; const search = [...document.querySelectorAll('input[type="text"][data-column]')].find((input) => input.dataset.column === column); const selected = [...document.querySelectorAll('input[type="checkbox"][data-column]')].filter((input) => input.dataset.column === column && input.checked).map((input) => normalize(input.value)); const from = [...document.querySelectorAll('[data-date-start]')].find((input) => input.dataset.dateStart === column); const to = [...document.querySelectorAll('[data-date-end]')].find((input) => input.dataset.dateEnd === column); return [column, { text: keywords(search?.value), selected, from: from?.value || '', to: to?.value || '' }]; }));
 }
 function hasActiveCriteria(filters) { return Object.values(filters).some((filter) => filter.text.length || filter.selected.length || filter.from || filter.to); }
-function matches(row, filters) { return state.columns.every((column) => { const filter = filters[column]; const value = normalize(row[column]); if (filter.text.length && !filter.text.some((term) => value.includes(term))) return false; if (filter.selected.length && !filter.selected.includes(value)) return false; if (filter.from || filter.to) { const date = toDate(row[column]); if (!date || (filter.from && date < filter.from) || (filter.to && date > filter.to)) return false; } return true; }); }
+function matches(row, filters) { return state.columns.every((column) => { const filter = filters[column]; const value = normalize(row[column]); if (filter.text.length && !filter.text.some(term => matchSearch(value,term))){ return false;} if (filter.selected.length && !filter.selected.includes(value)) return false; if (filter.from || filter.to) { const date = toDate(row[column]); if (!date || (filter.from && date < filter.from) || (filter.to && date > filter.to)) return false; } return true; }); }
 function validateExtendYear() { const column = state.columns.find((item) => normalize(item) === 'extend year'); if (!column) return true; const input = [...document.querySelectorAll('input[type="text"][data-column]')].find((item) => item.dataset.column === column); const value = clean(input?.value); if (value && !/^\d+(\.\d+)?$/.test(value)) { alert('Extend year must contain a decimal number only, for example 1 or 1.5.'); input.focus(); return false; } return true; }
 function renderResults(rows) {
   resultsHead.replaceChildren(); resultsBody.replaceChildren(); if (!rows.length) { resultTitle.textContent = 'No results'; resultsStatus.textContent = 'No matching records were found.'; resultsBody.innerHTML = '<tr><td colspan="100%"><div class="empty-state">No matching data found.</div></td></tr>'; return; }
