@@ -157,7 +157,31 @@ function matchSearch(text,search){if (!text || !search) {return false;}
 if(search.startsWith('*')&&search.endsWith('*')){const parts=search.slice(1,-1).split('*').map(item=>item.trim()).filter(Boolean);return parts.every(part=>text.includes(part));}//mac dinh tim dung cum
 const words=search.split(/\s+/).filter(Boolean); return words.every(word=>
 text.includes(word));}
-function toDate(value) { const text = clean(value); if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text; const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (match) return `${match[3]}-${match[2]}-${match[1]}`; const date = new Date(text); return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10); }
+function toDate(value) {
+
+    const text = clean(value);
+
+    if (!text) return null;
+
+    // yyyy-mm-dd từ input date
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+        return text;
+    }
+
+    // M/D/YYYY hoặc MM/DD/YYYY
+    const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+    if (match) {
+
+        const month = match[1].padStart(2, '0');
+        const day = match[2].padStart(2, '0');
+        const year = match[3];
+
+        return `${year}-${month}-${day}`;
+    }
+
+    return null;
+}
 function getCriteria() {
   return Object.fromEntries(state.columns.map((column) => { if (isHiddenFilter(column)) return [column, { text: [], selected: [], from: '', to: '' }]; const search = [...document.querySelectorAll('input[type="text"][data-column]')].find((input) => input.dataset.column === column); const selected = [...document.querySelectorAll('input[type="checkbox"][data-column]')].filter((input) => input.dataset.column === column && input.checked).map((input) => normalize(input.value)); const from = [...document.querySelectorAll('[data-date-start]')].find((input) => input.dataset.dateStart === column); const to = [...document.querySelectorAll('[data-date-end]')].find((input) => input.dataset.dateEnd === column); return [column, { text: keywords(search?.value), selected, from: from?.value || '', to: to?.value || '' }]; }));
 }
