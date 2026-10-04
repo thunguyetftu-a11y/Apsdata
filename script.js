@@ -288,24 +288,63 @@ function renderResults(rows) {
 
     rows.forEach(row => {
 
-        const tr = document.createElement('tr');
+    const tr = document.createElement('tr');
 
-        state.columns.forEach(column => {
+    state.columns.forEach(column => {
 
-            const td = document.createElement('td');
+        const td = document.createElement('td');
 
-            const preview = document.createElement('div');
-            preview.className = 'cell-preview';
-            preview.textContent = row[column] ?? '';
+        const preview = document.createElement('div');
+        preview.className = 'cell-preview';
+        preview.textContent = row[column] ?? '';
 
-            td.appendChild(preview);
-            tr.appendChild(td);
-        });
+        td.appendChild(preview);
+        tr.appendChild(td);
+    });
+
+    tr.addEventListener('click', () => {
+        showDetail(row);
+    });
+
+    fragment.appendChild(tr);
+});
 
         fragment.appendChild(tr);
     });
 
     resultsBody.appendChild(fragment);
+}function showDetail(row) {
+
+    const modal = document.createElement('div');
+    modal.className = 'detail-modal';
+
+    modal.innerHTML = `
+        <div class="detail-backdrop"></div>
+        <div class="detail-card">
+            <div class="detail-header">
+                <h3>Record Details</h3>
+                <button class="ghost-btn close-detail">Close</button>
+            </div>
+            <div class="detail-content">
+                ${state.columns.map(column => `
+                    <div class="detail-item">
+                        <dt>${column}</dt>
+                        <dd>${row[column] ?? ''}</dd>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+
+    modal.querySelector('.detail-backdrop')
+         .addEventListener('click', close);
+
+    modal.querySelector('.close-detail')
+         .addEventListener('click', close);
 }
 function search() { if (!state.ready) { resultsStatus.textContent = 'Data is still loading. Please try again in a moment.'; return; } if (!validateExtendYear()) return; const filters = getCriteria(); if (!hasActiveCriteria(filters)) { resultsHead.replaceChildren(); resultsBody.replaceChildren(); resultTitle.textContent = 'Enter a search criterion'; resultsStatus.textContent = 'Enter a keyword, choose a value, or select a date range before searching.'; return; } renderResults(state.rows.filter((row) => matches(row, filters))); }
 function reset() { filtersContainer.querySelectorAll('input').forEach((input) => { input.checked = false; input.value = ''; }); resultsHead.replaceChildren(); resultsBody.replaceChildren(); resultTitle.textContent = 'Ready to search'; resultsStatus.textContent = 'Filters reset.'; }
